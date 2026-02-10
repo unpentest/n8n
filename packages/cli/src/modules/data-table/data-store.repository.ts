@@ -145,7 +145,7 @@ export class DataStoreRepository extends Repository<DataTable> {
 
 			if (existingTables.length === 0) return false;
 
-			// Execute all deletions in parallel for better performance
+			// Execute all deletions in parallel (safe within transaction as they are independent operations)
 			await Promise.all(existingTables.map((match) => this.deleteDataStore(match.id, em)));
 
 			return true;
@@ -158,7 +158,7 @@ export class DataStoreRepository extends Repository<DataTable> {
 
 			if (existingTables.length === 0) return false;
 
-			// Execute all deletions in parallel for better performance
+			// Execute all deletions in parallel (safe within transaction as they are independent operations)
 			await Promise.all(
 				existingTables.map(async (match) => {
 					await em.delete(DataTable, { id: match.id });

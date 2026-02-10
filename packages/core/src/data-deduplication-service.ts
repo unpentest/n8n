@@ -72,7 +72,6 @@ export class DataDeduplicationService {
 			const value = get(items[index], propertyName);
 			const stringified = JSON.stringify(value);
 			const key = stringified || '';
-			
 			// Maintain original behavior: Keep last occurrence (overwrite duplicates)
 			itemLookup[key] = index;
 		}
