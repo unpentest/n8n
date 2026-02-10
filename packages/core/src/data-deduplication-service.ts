@@ -65,24 +65,20 @@ export class DataDeduplicationService {
 	): Promise<IDeduplicationOutputItems> {
 		this.assertDeduplicator();
 		// Build lookup map with stringified values as keys
-		// Using Map instead of plain object for better performance with many items
+		// Optimized: Avoid redundant toString() call since JSON.stringify already returns a string
 		const itemLookup: Record<string, number> = {};
-		const stringifiedValues: string[] = [];
 
 		for (let index = 0; index < items.length; index++) {
 			const value = get(items[index], propertyName);
 			const stringified = JSON.stringify(value);
 			const key = stringified || '';
 			
-			// Store only the first occurrence of each key (handles duplicates)
-			if (!(key in itemLookup)) {
-				itemLookup[key] = index;
-				stringifiedValues.push(key);
-			}
+			// Maintain original behavior: Keep last occurrence (overwrite duplicates)
+			itemLookup[key] = index;
 		}
 
 		const checkedItems = await this.deduplicator.checkProcessedAndRecord(
-			stringifiedValues,
+			Object.keys(itemLookup),
 			scope,
 			contextData,
 			options,

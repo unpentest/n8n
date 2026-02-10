@@ -125,12 +125,15 @@ export class DataStoreRepository extends Repository<DataTable> {
 				updates.push({ id: existing.id, name });
 			}
 
-			// Batch update all tables
-			await Promise.all(
-				updates.map((update) =>
-					em.update(DataTable, { id: update.id }, { name: update.name, projectId: toProjectId }),
-				),
-			);
+			// Execute updates sequentially to avoid potential database lock conflicts
+			// The main optimization is the batch fetch above, not parallelization
+			for (const update of updates) {
+				await em.update(
+					DataTable,
+					{ id: update.id },
+					{ name: update.name, projectId: toProjectId },
+				);
+			}
 
 			return true;
 		});
