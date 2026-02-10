@@ -307,12 +307,9 @@ export class DeduplicationHelper implements IDataDeduplicator {
 
 		const processedDataValue = processedData.value;
 
-		hashedItems.forEach((item) => {
-			const index = processedDataValue.data.findIndex((value) => value === item);
-			if (index !== -1) {
-				processedDataValue.data.splice(index, 1);
-			}
-		});
+		// Use Set for O(n) removal instead of O(n²) with findIndex + splice
+		const itemsToRemove = new Set(hashedItems);
+		processedDataValue.data = processedDataValue.data.filter((value) => !itemsToRemove.has(value));
 
 		await Container.get(ProcessedDataRepository).update(
 			{ workflowId: processedData.workflowId, context: processedData.context },
