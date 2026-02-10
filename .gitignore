@@ -43,4 +43,5 @@ __pycache__
 packages/cli/THIRD_PARTY_LICENSES.md
 .coverage
 .nyc_output
-packages/cli/src/commands/export/outputs
+packages/cli/src/commands/export/outputsnode_modules_link/
+test_summary.txt
