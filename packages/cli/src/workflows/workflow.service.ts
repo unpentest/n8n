@@ -158,8 +158,17 @@ export class WorkflowService {
 		const workflowIds = workflows.map((workflow) => workflow.id);
 		const relations = await this.sharedWorkflowRepository.getAllRelationsForWorkflows(workflowIds);
 
+		// Create a Map for O(1) lookups instead of O(n) filtering for each workflow
+		const relationsByWorkflowId = new Map<string, typeof relations>();
+		for (const relation of relations) {
+			if (!relationsByWorkflowId.has(relation.workflowId)) {
+				relationsByWorkflowId.set(relation.workflowId, []);
+			}
+			relationsByWorkflowId.get(relation.workflowId)!.push(relation);
+		}
+
 		workflows.forEach((workflow) => {
-			workflow.shared = relations.filter((relation) => relation.workflowId === workflow.id);
+			workflow.shared = relationsByWorkflowId.get(workflow.id) ?? [];
 		});
 	}
 
