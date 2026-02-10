@@ -138,7 +138,12 @@ function convertToUniqueJsDotName(nodeName: string, allNodeNames: string[]) {
 	// because we must have a different index, so therefore only one of us can be `ourName_27_27`
 	//
 	// The underscore prevents colliding e.g. index 1 with 11
-	while (allNodeNames.includes(jsLegal)) jsLegal += `_${allNodeNames.indexOf(nodeName)}`;
+	// Optimized: Use Set for O(1) lookup and cache the index to avoid repeated indexOf
+	const nodeNamesSet = new Set(allNodeNames);
+	const nodeIndex = allNodeNames.indexOf(nodeName);
+	while (nodeNamesSet.has(jsLegal)) {
+		jsLegal += `_${nodeIndex}`;
+	}
 	return jsLegal;
 }
 

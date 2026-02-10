@@ -85,7 +85,9 @@ export class RoleCacheService {
 
 		for (const [roleSlug, roleInfo] of Object.entries(roleScopeMap[namespace] ?? {})) {
 			// Check if role has ALL required scopes
-			const hasAllScopes = requiredScopes.every((scope) => roleInfo.scopes.includes(scope));
+			// Optimized: Use Set for O(1) lookups instead of O(n) array .includes()
+			const roleScopesSet = new Set(roleInfo.scopes);
+			const hasAllScopes = requiredScopes.every((scope) => roleScopesSet.has(scope));
 			if (hasAllScopes) {
 				matchingRoles.push(roleSlug);
 			}
