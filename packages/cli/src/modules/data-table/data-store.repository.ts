@@ -94,35 +94,45 @@ export class DataStoreRepository extends Repository<DataTable> {
 		return await withTransaction(this.manager, trx, async (em) => {
 			const existingTables = await em.findBy(DataTable, { projectId: fromProjectId });
 
-			let transferred = false;
+			if (existingTables.length === 0) return false;
+
+			// Batch fetch all existing tables in target project for name clash detection
+			const targetTables = await em.findBy(DataTable, { projectId: toProjectId });
+			const targetTableNames = new Set(targetTables.map((t) => t.name));
+
+			let project: Project | null = null;
+			const updates: Array<{ id: string; name: string }> = [];
+
 			for (const existing of existingTables) {
 				let name = existing.name;
-				const hasNameClash = await em.existsBy(DataTable, {
-					name,
-					projectId: toProjectId,
-				});
 
-				if (hasNameClash) {
-					const project = await em.findOneByOrFail(Project, { id: fromProjectId });
+				if (targetTableNames.has(name)) {
+					// Lazy load project only if needed
+					if (!project) {
+						project = await em.findOneByOrFail(Project, { id: fromProjectId });
+					}
 					name = `${existing.name} (${project.name})`;
 
-					const stillHasNameClash = await em.existsBy(DataTable, {
-						name,
-						projectId: toProjectId,
-					});
-
-					if (stillHasNameClash) {
+					if (targetTableNames.has(name)) {
 						throw new DataStoreNameConflictError(
 							`Failed to transfer data store "${existing.name}" to the target project "${toProjectId}". A data table with the same name already exists in the target project.`,
 						);
 					}
+					// Add to set to avoid duplicate name conflicts within the same batch
+					targetTableNames.add(name);
 				}
 
-				await em.update(DataTable, { id: existing.id }, { name, projectId: toProjectId });
-				transferred = true;
+				updates.push({ id: existing.id, name });
 			}
 
-			return transferred;
+			// Batch update all tables
+			await Promise.all(
+				updates.map((update) =>
+					em.update(DataTable, { id: update.id }, { name: update.name, projectId: toProjectId }),
+				),
+			);
+
+			return true;
 		});
 	}
 
@@ -130,13 +140,12 @@ export class DataStoreRepository extends Repository<DataTable> {
 		return await withTransaction(this.manager, trx, async (em) => {
 			const existingTables = await em.findBy(DataTable, { projectId });
 
-			let changed = false;
-			for (const match of existingTables) {
-				const result = await this.deleteDataStore(match.id, em);
-				changed = changed || result;
-			}
+			if (existingTables.length === 0) return false;
 
-			return changed;
+			// Execute all deletions in parallel for better performance
+			await Promise.all(existingTables.map((match) => this.deleteDataStore(match.id, em)));
+
+			return true;
 		});
 	}
 
@@ -144,14 +153,17 @@ export class DataStoreRepository extends Repository<DataTable> {
 		return await withTransaction(this.manager, trx, async (em) => {
 			const existingTables = await em.findBy(DataTable, {});
 
-			let changed = false;
-			for (const match of existingTables) {
-				const result = await em.delete(DataTable, { id: match.id });
-				await this.dataStoreRowsRepository.dropTable(match.id, em);
-				changed = changed || (result.affected ?? 0) > 0;
-			}
+			if (existingTables.length === 0) return false;
 
-			return changed;
+			// Execute all deletions in parallel for better performance
+			await Promise.all(
+				existingTables.map(async (match) => {
+					await em.delete(DataTable, { id: match.id });
+					await this.dataStoreRowsRepository.dropTable(match.id, em);
+				}),
+			);
+
+			return true;
 		});
 	}
 

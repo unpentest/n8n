@@ -81,9 +81,10 @@ export class WorkflowService {
 		let isPersonalProject = false;
 
 		if (options?.filter?.projectId) {
-			const projects = await this.projectService.getProjectRelationsForUser(user);
-			isPersonalProject = !!projects.find(
-				(p) => p.project.id === options.filter?.projectId && p.project.type === 'personal',
+			// Optimized: Only check the specific project instead of loading all projects
+			isPersonalProject = await this.projectService.isPersonalProject(
+				user.id,
+				options.filter.projectId,
 			);
 		}
 
