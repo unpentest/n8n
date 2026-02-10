@@ -846,13 +846,22 @@ export class Workflow {
 			}
 		}
 
+		// Optimized: Create index map once for O(1) lookups in sort comparator
+		const nodeTypeIndexMap = new Map(
+			STARTING_NODE_TYPES.map((type, index) => [type, index]),
+		);
 		const sortedNodeNames = Object.values(this.nodes)
-			.sort((a, b) => STARTING_NODE_TYPES.indexOf(a.type) - STARTING_NODE_TYPES.indexOf(b.type))
+			.sort((a, b) => {
+				const indexA = nodeTypeIndexMap.get(a.type) ?? Infinity;
+				const indexB = nodeTypeIndexMap.get(b.type) ?? Infinity;
+				return indexA - indexB;
+			})
 			.map((n) => n.name);
 
 		for (const nodeName of sortedNodeNames) {
 			node = this.nodes[nodeName];
-			if (STARTING_NODE_TYPES.includes(node.type)) {
+			// Use Map for O(1) lookup instead of array .includes()
+			if (nodeTypeIndexMap.has(node.type)) {
 				if (node.disabled === true) {
 					continue;
 				}

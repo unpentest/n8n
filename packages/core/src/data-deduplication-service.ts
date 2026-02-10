@@ -64,12 +64,17 @@ export class DataDeduplicationService {
 		options: ICheckProcessedOptions,
 	): Promise<IDeduplicationOutputItems> {
 		this.assertDeduplicator();
-		let value;
-		const itemLookup = items.reduce((acc, cur, index) => {
-			value = JSON.stringify(get(cur, propertyName));
-			acc[value ? value.toString() : ''] = index;
-			return acc;
-		}, {});
+		// Build lookup map with stringified values as keys
+		// Optimized: Avoid redundant toString() call since JSON.stringify already returns a string
+		const itemLookup: Record<string, number> = {};
+
+		for (let index = 0; index < items.length; index++) {
+			const value = get(items[index], propertyName);
+			const stringified = JSON.stringify(value);
+			const key = stringified || '';
+			// Maintain original behavior: Keep last occurrence (overwrite duplicates)
+			itemLookup[key] = index;
+		}
 
 		const checkedItems = await this.deduplicator.checkProcessedAndRecord(
 			Object.keys(itemLookup),
@@ -79,8 +84,8 @@ export class DataDeduplicationService {
 		);
 
 		return {
-			new: checkedItems.new.map((key) => items[itemLookup[key] as number]),
-			processed: checkedItems.processed.map((key) => items[itemLookup[key] as number]),
+			new: checkedItems.new.map((key) => items[itemLookup[key]]),
+			processed: checkedItems.processed.map((key) => items[itemLookup[key]]),
 		};
 	}
 

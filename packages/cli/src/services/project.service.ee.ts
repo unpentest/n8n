@@ -288,6 +288,21 @@ export class ProjectService {
 		});
 	}
 
+	/**
+	 * Check if a specific project is a personal project for the given user.
+	 * This is more efficient than loading all project relations when only checking one project.
+	 * 
+	 * @returns true if the user has access to the project and it's a personal project, false otherwise
+	 */
+	async isPersonalProject(userId: string, projectId: string): Promise<boolean> {
+		const projectRelation = await this.projectRelationRepository.findOne({
+			where: { userId, projectId },
+			relations: ['project'],
+		});
+		// Returns false if user doesn't have access (projectRelation is null) or if project is not personal
+		return projectRelation?.project.type === 'personal';
+	}
+
 	async syncProjectRelations(
 		projectId: string,
 		relations: Array<{ role: AssignableProjectRole; userId: string }>,
