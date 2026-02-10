@@ -124,13 +124,13 @@ export function applyAccessPatterns(expression: string, previousName: string, ne
 }
 
 function convertToUniqueJsDotName(nodeName: string, allNodeNames: string[]) {
-	let jsLegal = nodeName
+	const baseJsLegal = nodeName
 		.replaceAll(' ', '_')
 		.split('')
 		.filter((x) => !INVALID_JS_DOT_NAME.test(x))
 		.join('');
 
-	if (nodeName === jsLegal) return jsLegal;
+	if (nodeName === baseJsLegal) return baseJsLegal;
 
 	// This accounts for theoretical cases where we collide with other reduced names
 	// By adding our own index in the array we also avoid running into theoretical cases
@@ -142,8 +142,9 @@ function convertToUniqueJsDotName(nodeName: string, allNodeNames: string[]) {
 	const nodeNamesSet = new Set(allNodeNames);
 	const nodeIndex = allNodeNames.indexOf(nodeName);
 	let suffix = nodeIndex;
+	let jsLegal = baseJsLegal;
 	while (nodeNamesSet.has(jsLegal)) {
-		jsLegal += `_${suffix}`;
+		jsLegal = `${baseJsLegal}_${suffix}`;
 		suffix++;
 	}
 	return jsLegal;
